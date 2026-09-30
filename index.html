@@ -377,7 +377,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-600 font-semibold mb-1">已繳期數 (含寬限期)</label>
-                                <input type="number" id="monthsPaid" value="44" step="1" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs shadow-sm font-bold text-blue-700">
+                                <input type="number" id="monthsPaid" value="44" min="1" step="1" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs shadow-sm font-bold text-blue-700">
                             </div>
                         </div>
 
@@ -581,7 +581,7 @@
             recalculateAll();
         }
 
-        // --- 核心計算 1: 房地產與房貸精算 (含動態期數與自動同步) ---
+        // --- 核心計算 1: 房地產與房貸精算 (期數 1:1 同步) ---
         function calculateProperty() {
             const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
             const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
@@ -637,21 +637,21 @@
                 cachedRemainingLoan = 0;
             }
 
-            // 3. 【核心連動】動態計算外派 5 年後 (已繳期數 + 60) 的房貸月付金
-            const targetStage2Month = monthsPaid + 60;
+            // 3. 【核心修正】已繳期數直接等同於回台時目標期數 (1:1 對應)
+            const targetStage2Month = monthsPaid > 0 ? Math.min(monthsPaid, totalMonths) : 0;
             let stage2MonthlyPayment = 0;
             let subtext = "";
 
-            if (targetStage2Month <= totalMonths) {
+            if (targetStage2Month > 0) {
                 stage2MonthlyPayment = schedule[targetStage2Month - 1].monthlyPayment;
                 if (targetStage2Month <= gracePeriod) {
-                    subtext = "屆時仍在寬限期內，每月僅需繳納利息";
+                    subtext = "仍在寬限期內，每月僅需繳納利息";
                 } else {
                     subtext = "寬限期已過，為本息平均攤還金額";
                 }
             } else {
                 stage2MonthlyPayment = 0;
-                subtext = "屆時房貸已全數清償完畢！";
+                subtext = "請輸入已繳期數以進行計算";
             }
 
             cachedStage2Mortgage = stage2MonthlyPayment;
@@ -662,7 +662,7 @@
                 mortgageInput.value = Math.round(stage2MonthlyPayment);
             }
 
-            // 5. 更新卡片資訊
+            // 5. 更新卡片資訊 (標題與金額 100% 同步)
             const titleEl = document.getElementById('stage2_mortgage_title');
             if (titleEl) {
                 titleEl.innerText = `回台時 (第 ${targetStage2Month} 期) 預估月付房貸`;
