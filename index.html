@@ -52,14 +52,14 @@
                 <span id="top_financial_split" class="text-[10px] text-slate-500 block"></span>
             </div>
             <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">房產估值淨權益 (賣價-房貸)</span>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">房產實質到手淨值 (扣稅費與房貸)</span>
                 <span id="top_house_equity" class="text-xl font-black text-amber-700 mt-0.5 block">0 萬</span>
-                <span id="top_house_loan_sub" class="text-[10px] text-slate-500 block">剩餘貸款: 0 萬</span>
+                <span id="top_house_loan_sub" class="text-[10px] text-slate-500 block">扣除房貸與稅費</span>
             </div>
             <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
                 <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">當前真實總淨資產 (Net Worth)</span>
                 <span id="top_total_networth" class="text-xl font-black text-emerald-600 mt-0.5 block">0 萬</span>
-                <span class="text-[10px] text-emerald-600 font-semibold block">金融資產 + 房產淨值</span>
+                <span class="text-[10px] text-emerald-600 font-semibold block">金融資產 + 房產實拿現款</span>
             </div>
             <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
                 <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">回台每月可用零用金 (平攤)</span>
@@ -637,7 +637,7 @@
                 cachedRemainingLoan = 0;
             }
 
-            // 3. 【核心修正】已繳期數直接等同於回台時目標期數 (1:1 對應)
+            // 3. 已繳期數直接等同於目標期數 (1:1 對應)
             const targetStage2Month = monthsPaid > 0 ? Math.min(monthsPaid, totalMonths) : 0;
             let stage2MonthlyPayment = 0;
             let subtext = "";
@@ -662,7 +662,7 @@
                 mortgageInput.value = Math.round(stage2MonthlyPayment);
             }
 
-            // 5. 更新卡片資訊 (標題與金額 100% 同步)
+            // 5. 更新卡片資訊
             const titleEl = document.getElementById('stage2_mortgage_title');
             if (titleEl) {
                 titleEl.innerText = `回台時 (第 ${targetStage2Month} 期) 預估月付房貸`;
@@ -671,7 +671,7 @@
             document.getElementById('stage2_mortgage_subtext').innerText = subtext;
             document.getElementById('remainingBalanceDisplay').innerText = formatCurrency(cachedRemainingLoan) + " 元";
 
-            // 6. 房產賣出交易成本與淨利
+            // 6. 房產賣出交易成本與淨利 (精算實質到手現金)
             const agencyFeeAmount = sellPrice * agencyFeePct;
             const escrowFee = sellPrice * 0.00015;
             const totalSellingCosts = agencyFeeAmount + escrowFee + docFee;
@@ -754,16 +754,19 @@
                     document.getElementById('val_' + id).innerText = formatCurrency(parseFloat(document.getElementById(id).value) || 0);
                 });
 
-                // 更新頂部總覽卡片
+                // 【核心修正】頂部總覽卡片全面改用「實際到手金額 (實拿現款)」
                 const totalFinancial = (current_tw + current_us) / 10000;
                 const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
-                const houseEquity = (sellPrice - cachedRemainingLoan) / 10000;
-                const trueNetWorth = totalFinancial + houseEquity;
+                const houseNetProfitWan = cachedPropertyNetProfit / 10000; // 實質變現淨值 (萬)
+                const trueNetWorth = totalFinancial + houseNetProfitWan;   // 金融資產 + 房產實拿淨額
+                const totalTaxesAndFees = Math.max(0, (sellPrice - cachedRemainingLoan - cachedPropertyNetProfit) / 10000);
 
                 document.getElementById('top_financial_assets').innerText = formatCurrency(totalFinancial) + " 萬";
                 document.getElementById('top_financial_split').innerText = `(台: ${formatCurrency(current_tw/10000)}萬 / 美: ${formatCurrency(current_us/10000)}萬)`;
-                document.getElementById('top_house_equity').innerText = formatCurrency(houseEquity) + " 萬";
-                document.getElementById('top_house_loan_sub').innerText = `剩餘房貸: ${formatCurrency(cachedRemainingLoan/10000)} 萬`;
+                
+                // 顯示精確到小數點一位的實質淨值
+                document.getElementById('top_house_equity').innerText = houseNetProfitWan.toFixed(1) + " 萬";
+                document.getElementById('top_house_loan_sub').innerText = `貸款: ${formatCurrency(cachedRemainingLoan/10000)}萬 | 稅費: ${totalTaxesAndFees.toFixed(1)}萬`;
                 document.getElementById('top_total_networth').innerText = formatCurrency(trueNetWorth) + " 萬";
 
                 // 第一階段：外派 5 年資產累積
